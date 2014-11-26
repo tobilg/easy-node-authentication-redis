@@ -1,44 +1,93 @@
-// load the things we need
-var mongoose = require('mongoose');
+var nohm = require('nohm').Nohm;
 var bcrypt   = require('bcrypt-nodejs');
+var redis = require('redis');
+var crypto = require('crypto');
+var config = require('../config');
 
-// define the schema for our user model
-var userSchema = mongoose.Schema({
+var redisClient = redis.createClient(config.redis.port, config.redis.ip, config.redis.options);
 
-    local            : {
-        email        : String,
-        password     : String,
-    },
-    facebook         : {
-        id           : String,
-        token        : String,
-        email        : String,
-        name         : String
-    },
-    twitter          : {
-        id           : String,
-        token        : String,
-        displayName  : String,
-        username     : String
-    },
-    google           : {
-        id           : String,
-        token        : String,
-        email        : String,
-        name         : String
-    }
+var User = null;
+
+redisClient.on("ready", function() {
+
+    console.log("redis ok");
 
 });
 
-// generating a hash
-userSchema.methods.generateHash = function(password) {
-    return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
-};
+nohm.setClient(redisClient);
 
-// checking if password is valid
-userSchema.methods.validPassword = function(password) {
-    return bcrypt.compareSync(password, this.local.password);
-};
+nohm.model('User', {
+    properties: {
+        localEmail: {
+            type: 'string',
+            unique: true,
+            validations: [
+                ['email']
+            ]
+        },
+        localPassword: {
+            defaultValue: '',
+            type: function (value) {
+                return value;
+            }
+        },
+        facebookId: {
+            type: 'string',
+            index: true
+        },
+        facebookToken: {
+            type: 'string'
+        },
+        facebookEmail: {
+            type: 'string'
+        },
+        facebookName: {
+            type: 'string'
+        },
+        twitterId: {
+            type: 'string',
+            index: true
+        },
+        twitterToken: {
+            type: 'string'
+        },
+        twitterDisplayName: {
+            type: 'string'
+        },
+        twitterUserName: {
+            type: 'string'
+        }
+    },
+    methods: {
+        generateHash: function(password) {
+            return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
+        },
+        validPassword: function(password) {
+            return bcrypt.compareSync(password, this.p('localPassword'));
+        },
+        generateID: function() {
+            return crypto.randomBytes(20).toString('hex');
+        }
+    },
+    idGenerator: function (cb) {
+        cb(this.generateID());
+    }
+});
+
 
 // create the model for users and expose it to our app
-module.exports = mongoose.model('User', userSchema);
+module.exports = nohm.factory('User');
+
+// try to load a user from the db
+module.exports.findUser = function(userId, callback) {
+
+    var foundUser = nohm.factory('User', userId, function (err) {
+        if (err === 'not found') {
+            console.log('no user with id ' + userId + ' found :-(');
+        } else if (err) {
+            console.log(err); // database or unknown error
+        }
+        callback(err, foundUser);
+    });
+
+}

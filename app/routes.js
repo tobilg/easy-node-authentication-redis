@@ -1,3 +1,6 @@
+// load up the user model
+var User       = require('./models/user');
+
 module.exports = function(app, passport) {
 
 // normal routes ===============================================================
@@ -148,41 +151,43 @@ module.exports = function(app, passport) {
 
 	// local -----------------------------------
 	app.get('/unlink/local', isLoggedIn, function(req, res) {
-		var user            = req.user;
-		user.local.email    = undefined;
-		user.local.password = undefined;
-		user.save(function(err) {
-			res.redirect('/profile');
-		});
+
+        User.findUser(req.user.id, function(err, user){
+            console.log("Local unlink: " + user.allProperties());
+            user.p('localEmail', "");
+            user.p('localPassword', "");
+            user.save(function(err) {
+                res.redirect('/profile');
+            });
+        });
+
 	});
 
 	// facebook -------------------------------
 	app.get('/unlink/facebook', isLoggedIn, function(req, res) {
-		var user            = req.user;
-		user.facebook.token = undefined;
-		user.save(function(err) {
-			res.redirect('/profile');
-		});
+
+        User.findUser(req.user.id, function(err, user){
+            console.log("Facebook unlink: " + user.allProperties());
+            user.p('facebookToken', "");
+            user.save(function(err) {
+                res.redirect('/profile');
+            });
+        });
+
 	});
 
 	// twitter --------------------------------
 	app.get('/unlink/twitter', isLoggedIn, function(req, res) {
-		var user           = req.user;
-		user.twitter.token = undefined;
-		user.save(function(err) {
-			res.redirect('/profile');
-		});
-	});
 
-	// google ---------------------------------
-	app.get('/unlink/google', isLoggedIn, function(req, res) {
-		var user          = req.user;
-		user.google.token = undefined;
-		user.save(function(err) {
-			res.redirect('/profile');
-		});
-	});
+        User.findUser(req.user.id, function(err, user){
+            console.log("Twitter unlink: " + user.allProperties());
+            user.p('twitterToken', "");
+            user.save(function(err) {
+                res.redirect('/profile');
+            });
+        });
 
+	});
 
 };
 
